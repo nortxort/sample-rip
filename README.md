@@ -29,8 +29,8 @@ Assuming a folder named `musicradar` was created, then the folder structure shou
     musciradar/
         musicradar-8-bit-bonanza-samples.zip
         musicradar-90s-ambient-samples.zip
-	musicradar-303-style-acid-samples.zip
-	musicradar-808-samples.zip
+        musicradar-303-style-acid-samples.zip
+        musicradar-808-samples.zip
         ....
 
 After downloading the sample packs you will have to unpack them yourself, as they are all downlaoded as *.zip files.
