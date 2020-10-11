@@ -55,7 +55,7 @@ class MusicRadarParser:
     _sample_packs = []
     _page_errors = 0
 
-    def __init__(self, tasks_amount: int = 90, wait_time: int = 7):
+    def __init__(self, tasks_amount: int = 10, wait_time: int = 5):
         """
         Initialize the MusicRadar parser.
 
@@ -141,7 +141,7 @@ class MusicRadarParser:
 
         for page in pages:
 
-            if page.status == 200:
+            if page is not None and page.status == 200:
 
                 soup = BeautifulSoup(await page.text(), 'html.parser')
                 text_copy_class = soup.find(attrs={'class': 'text-copy bodyCopy auto'})

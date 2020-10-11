@@ -37,7 +37,7 @@ class Downloader:
     """
     Class to download files.
     """
-    def __init__(self, path, tasks_amount: int = 20, wait_time: int = 3):
+    def __init__(self, path, tasks_amount: int = 10, wait_time: int = 5):
         """
         Initialize the Downloader class.
 

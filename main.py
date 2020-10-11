@@ -33,7 +33,32 @@ from musicradar import MusicRadarParser
 from downloader import Downloader
 from web import Session
 
+# ------------- Configuration ----------------
+# You could change these settings to speed up the overall process.
+# But do bare in mind that setting SIMULTANEOUS_PARSER_TASKS
+# and SIMULTANEOUS_DOWNLOADER_TASKS to high could lead to errors.
+
+# The amount of simultaneous tasks for the parser.
+SIMULTANEOUS_PARSER_TASKS = 40
+
+# The wait time between parser tasks.
+PARSER_WAIT_TIME = 5
+
+# The amount of simultaneous downloader tasks.
+SIMULTANEOUS_DOWNLOADER_TASKS = 20
+
+# The wait time between download tasks.
+DOWNLOADER_WAIT_TIME = 3
+# --------------------------------------------
+
 log = logging.getLogger(__name__)
+
+
+def logger_setup():
+    fmt = '%(asctime)s : %(levelname)s : %(filename)s : ' \
+          '%(lineno)d : %(funcName)s() : %(name)s : %(message)s'
+
+    logging.basicConfig(filename='debug.log', level=10, format=fmt)
 
 
 async def run(path: str):
@@ -60,7 +85,8 @@ async def run(path: str):
 
     print('Starting parser..')
 
-    parser = MusicRadarParser()
+    parser = MusicRadarParser(tasks_amount=SIMULTANEOUS_PARSER_TASKS,
+                              wait_time=PARSER_WAIT_TIME)
     await parser.gather_urls()
     print(f'\n{len(parser.sample_pages)} urls parsed.')
 
@@ -69,7 +95,7 @@ async def run(path: str):
     print(f'Found {len(parser.sample_packs)} sample packs on {len(parser.sample_pages)} pages.')
 
     if parser.errors > 0:
-        print(f'{parser.errors} parser errors, usually due to 404 responses.')
+        print(f'{parser.errors} parser errors. Try adjusting the configuration.')
 
     downloads = []
 
@@ -85,7 +111,8 @@ async def run(path: str):
     else:
         input(f'Press enter to start downloading {len(downloads)} sample packs.')
 
-        dl = Downloader(fh.path)
+        dl = Downloader(fh.path, tasks_amount=SIMULTANEOUS_DOWNLOADER_TASKS,
+                        wait_time=DOWNLOADER_WAIT_TIME)
         print(f'\nStarting downloader, this might take a while...')
 
         start = time.time()
@@ -112,4 +139,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logger_setup()
     main()
