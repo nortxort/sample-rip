@@ -22,7 +22,7 @@ You may want to experiment with the configuration settings found in [main.py](ht
 
 Run `path/to/main.py`. When asked to enter path, enter the path to the folder you created. This will start the parsing process, once that is done you will be promted with some status information.
 
-When running main later on and pointing to the folder that contains samples, only samples not already downloaded will be downloaded.
+When running main later on and pointing to the folder that contains samples, only samples not already downloaded will be downloaded. **NOTE:**This is only possible, if the sample packs are not renamed after downloading/unpacking them.
 
 Assuming a folder named `musicradar` was created, then the folder structure should look something like:
 
