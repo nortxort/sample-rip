@@ -35,6 +35,9 @@ from web import Session
 
 # version 2.0.0
 
+# the max amount of sample packs to process.
+# setting this to 0 will download all packs.
+MAX_SAMPLE_PACKS = 5
 
 # amounts of simultaneously parsers.
 PARSER_WORKERS = 3
@@ -96,7 +99,7 @@ async def run(path: str):
 
     print('Starting parser..')
 
-    parser = MusicRadarParser(PARSER_QUEUE_MAX_SIZE, 5)
+    parser = MusicRadarParser(PARSER_QUEUE_MAX_SIZE, MAX_SAMPLE_PACKS)
     sample_packs = await parser.start(workers=PARSER_WORKERS)
 
     print(f'parsed {len(sample_packs)} sample packs urls')
