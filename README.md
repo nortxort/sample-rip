@@ -1,17 +1,24 @@
 ## Sample-rip
 
-Sample-rip is a small python program to download free samples from  [musicradar](https://www.musicradar.com/news/tech/free-music-samples-royalty-free-loops-hits-and-multis-to-download) with. Since all these samples are all royalty-free, you may use them as you like in your favorite DAW.
+Sample-rip is a small python program to download sample packs from  [musicradar](https://www.musicradar.com/news/tech/free-music-samples-royalty-free-loops-hits-and-multis-to-download) with. Since all these samples are all royalty-free, you may use them as you like in your favorite DAW. The sample packs are downloaded as zip files, and will need to be unzipped once downloaded.
+
+**NOTE:** It will take a lot of time to download all sample packs since they are about 75GB in total. (14/12/2024)
+
+I have provided a [urls](https://github.com/nortxort/sample-rip/blob/master/urls.txt) file containing links to all the zip files.
 
 
 ## Setup
 
-sample-rip was tested on windows 7/10 using python 3.8
+sample-rip was tested on windows 10 using python 3.12
 
 Before running the program, create a folder on your hard drive, e.g `musicradar`. This folder will contain all the sample packs downloaded. 
 
-**WARNING:** Please make sure you have enough space on your hard drive to contain **50+ GB** of sample packs. Failing to do so could lead to unwanted situations/errors.
+**WARNING:** Please make sure you have enough space on your hard drive to contain **75+ GB** of sample packs. Failing to do so could lead to unwanted situations/errors.
 
-You may want to experiment with the configuration settings found in [main.py](https://github.com/nortxort/sample-rip/blob/master/main.py#L36) to speed up the overall process. I sudgest using the default settings first.
+You may want to experiment with the configuration settings found in [main.py](https://github.com/nortxort/sample-rip/blob/master/main.py#L38) to speed up the overall process. I sudgest using the default settings first. 
+
+As default, only 5 sample packs will be processed. To processed all sample packs set **MAX\_SAMPLE\_PACKS** to 0.
+
 
 ### Requirements
 
@@ -22,7 +29,9 @@ You may want to experiment with the configuration settings found in [main.py](ht
 
 Run `path/to/main.py`. When asked to enter path, enter the path to the folder you created. This will start the parsing process, once that is done you will be promted with some status information.
 
-When running main later on and pointing to the folder that contains samples, only samples not already downloaded will be downloaded. **NOTE:**This is only possible, if the sample packs are not renamed after downloading/unpacking them.
+When running main later on and pointing to the folder that contains samples, only samples not already downloaded will be downloaded. 
+
+**NOTE:** This is only possible, if the sample packs are not renamed after downloading/unpacking them.
 
 Assuming a folder named `musicradar` was created, then the folder structure should look something like:
 
@@ -37,12 +46,9 @@ After downloading the sample packs you will have to unpack them yourself, as the
 
 ## Todo
 
-* Programmatically unpack zip files.
+* Implement database storage.
 
-* Clean up. Delete unpacked zip files.
-
-* Verbose?
-
+* Programmatically unpack zip files and delete the zip file.
 
 ## Author
 

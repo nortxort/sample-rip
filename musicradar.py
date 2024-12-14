@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2020 Nortxort
+Copyright (c) 2024 Nortxort
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -23,73 +23,75 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
-
 import logging
 import asyncio
 
 from bs4 import BeautifulSoup
 from web import get
-from utilities import chunk_list
 from samplepack import SamplePack
 
 
 log = logging.getLogger(__name__)
 
 
-class MusicRadarError(Exception):
-    pass
-
-
-class NoSamplePagesError(MusicRadarError):
-    pass
-
-
 class MusicRadarParser:
     """
     MusicRadar sample pack parser.
     """
-    _main_url = 'https://www.musicradar.com/news/tech/' \
-                'free-music-samples-download-loops-hits-and-multis-627820'
+    _main_url = ('https://www.musicradar.com/news/tech/'
+                 'free-music-samples-royalty-free-loops-hits-and-multis-to-download-sampleradar')
 
-    _sample_pages_urls = []
-    _sample_packs = []
-    _page_errors = 0
-
-    def __init__(self, tasks_amount: int = 10, wait_time: int = 5):
+    def __init__(self, queue_size: int = 0, packs_amount: int = 0):
         """
         Initialize the MusicRadar parser.
 
-        :param tasks_amount: The amount of tasks to run concurrently.
-        :param wait_time: The wait time in seconds between concurrent tasks.
+        :param queue_size: Sets the maxsize of the queue
         """
-        self._tasks = tasks_amount
-        self._wait = wait_time
-
-    @property
-    def sample_pages(self) -> list:
-        """
-        List containing parsed sample page urls.
-        """
-        return self._sample_pages_urls
+        self._main_queue = asyncio.Queue(maxsize=queue_size)
+        self._packs_amount = packs_amount
+        self._fail_queue = asyncio.Queue()
+        self._sample_packs = []
 
     @property
     def sample_packs(self) -> list:
-        """
-        A list of SamplePack objects.
-        """
+        """ A list of SamplePack objects. """
         return self._sample_packs
 
-    @property
-    def errors(self) -> int:
+    async def start(self, workers: int) -> list:
         """
-        Error count from parsing sample pack urls.
-        """
-        return self._page_errors
+        Start the MusicRadar parser.
 
-    async def gather_urls(self):
+        This will get all the sample pack urls from
+        the page(_main_url) containing links to sample
+        packs (zip files)
+
+        NOTE: The amount of workers should not be too high.
+        since this could cause the server to not respond,
+        resulting in timeouts
+
+        :param workers: The amount of queue workers
+        :return: A list of SamplePack objects
         """
-        Parse the sample page urls.
-        """
+        # prepare workers to work on the queue
+        consumers = [asyncio.create_task(self._queue_worker(i))
+                     for i in range(workers)]
+
+        # start producing sample page urls
+        await self._parse_sample_page_urls()
+
+        # wait for all workers to be done
+        await self._main_queue.join()
+
+        # cancel workers. they will still be in
+        # a loop state, waiting for queue items
+        for consumer in consumers:
+            consumer.cancel()
+
+        # return a list of SamplePack objects
+        return self._sample_packs
+
+    async def _parse_sample_page_urls(self):
+
         log.info('starting url parsing')
 
         response = await get(self._main_url)
@@ -99,68 +101,56 @@ class MusicRadarParser:
             body = soup.find(attrs={'id': 'article-body'})
 
             p_tags = body.find_all('p')
-            if len(p_tags) > 6:
+            if len(p_tags) > 8:
 
-                for p in p_tags[6:-1]:
+                i = 0
+                for p in p_tags[9:-1]:
+
+                    if self._packs_amount > 0:
+                        if i == self._packs_amount:
+                            break
 
                     p_a_tag = p.a
                     if hasattr(p_a_tag, 'text'):
-                        log.debug(f'parsed url: {p_a_tag["href"]}')
-                        self._sample_pages_urls.append(p_a_tag['href'])
+                        url = p_a_tag['href']
+                        log.debug(f'parsed url: {url}')
+                        if url.startswith('https://www.musicradar.com/'):
+                            await self._main_queue.put(url)
+                            i += 1
 
-    async def gather_sample_urls(self):
-        """
-        Parse sample pack urls concurrently.
-        """
-        if len(self._sample_pages_urls) == 0:
-            raise NoSamplePagesError(f'No sample urls parsed, {len(self._sample_pages_urls)}')
-        else:
-            log.info('parsing sample pages')
+    async def _queue_worker(self, num: int):
 
-            url_chunks = chunk_list(self._sample_pages_urls, self._tasks)
+        while True:
+            url = await self._main_queue.get()
+            log.debug(f'worker-{num}, handling: {url}')
 
-            for i, chunk in enumerate(url_chunks):
-
-                tasks = []
-                for url in chunk:
-                    task = asyncio.create_task(get(url, rua=True))
-                    tasks.append(task)
-
-                pages = await asyncio.gather(*tasks)
-                await self._parse_sample_pack_url(pages)
-
-                if i + 1 == len(url_chunks):
-                    break
-
-                log.debug(f'waiting for {self._wait} seconds')
-                await asyncio.sleep(self._wait)
-
-    async def _parse_sample_pack_url(self, pages: list):
-        # parse sample pack url
-        log.info('parsing sample pack urls')
-
-        for page in pages:
-
-            if page is not None and page.status == 200:
-
-                soup = BeautifulSoup(await page.text(), 'html.parser')
-                text_copy_class = soup.find(attrs={'class': 'text-copy bodyCopy auto'})
-
-                if text_copy_class is not None:
-                    p_tags = text_copy_class.find_all('p')
-
-                    for p in p_tags:
-                        p_a_tag = p.a
-                        if p_a_tag is not None:
-
-                            if p_a_tag['href'].endswith('.zip'):
-                                sample_pack_url = p_a_tag['href']
-                                sample_pack_title = p_a_tag.text
-
-                                debug = f'sample pack url: {sample_pack_url}, title: {sample_pack_title}'
-                                log.debug(debug)
-
-                                sample = SamplePack(sample_pack_url, sample_pack_title)
-                                self._sample_packs.append(sample)
+            response = await get(url=url, rua=True, timeout=10)
+            if response is not None:
+                await self._parse_sample_pack_url(url, await response.text())
+                self._main_queue.task_done()
             else:
-                self._page_errors += 1
+                # TODO: implement something for the fail_queue
+                await self._fail_queue.put(url)
+                self._main_queue.task_done()
+
+    async def _parse_sample_pack_url(self, url, response):
+
+        soup = BeautifulSoup(response, 'html.parser')
+        text_copy_class = soup.find(attrs={'class': 'text-copy bodyCopy auto'})
+
+        if text_copy_class is not None:
+            p_tags = text_copy_class.find_all('p')
+
+            for p in p_tags:
+
+                p_a_tag = p.a
+                if p_a_tag is not None:
+
+                    if p_a_tag['href'].endswith('.zip'):
+                        pack_url = p_a_tag['href']
+                        pack_title = p_a_tag.text
+
+                        log.debug(f'sample pack url: {pack_url}, title: {pack_title}')
+
+                        sample = SamplePack(url, pack_url, pack_title)
+                        self._sample_packs.append(sample)

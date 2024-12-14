@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2020 Nortxort
+Copyright (c) 2024 Nortxort
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -27,16 +27,24 @@ DEALINGS IN THE SOFTWARE.
 
 class SamplePack:
     """
-    Class representing a sample pack.
+    Sample pack data class.
     """
-    def __init__(self, url: str, title: str):
+    def __init__(self, page_url: str, url: str, title: str):
+        self._page_url = page_url
         self._url = url
         self._title = title
 
     @property
+    def page_url(self) -> str:
+        """
+        The page the sample pack url was located on.
+        """
+        return self._page_url
+
+    @property
     def url(self) -> str:
         """
-        The url of the sample pack.
+        The url of the sample pack(zip file).
         """
         return self._url
 
@@ -57,9 +65,9 @@ class SamplePack:
     @property
     def size(self) -> str:
         """
-        The size of the sample pack in MB.
+        The (titled)size of the sample pack in MB.
 
-        Some packs does not have a MB size that can
+        Some packs do not have an MB size that can
         be parsed, in that case N/A will be returned.
         """
         if '\'' in self._title:
@@ -69,3 +77,11 @@ class SamplePack:
             return self._title.split('(')[1].split(')')[0]
 
         return 'N/A'
+
+    def __repr__(self):
+        return (f'<{__class__.__name__} '
+                f'page_url={self.page_url}, '
+                f'url={self.url}, '
+                f'title={self.title}, '
+                f'file_name={self.file_name}, '
+                f'size={self.size}>')

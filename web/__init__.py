@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2020 Nortxort
+Copyright (c) 2024 Nortxort
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,9 +26,24 @@ DEALINGS IN THE SOFTWARE.
 
 from .agent import DEFAULT_AGENT, COMMON_AGENTS, random_agent
 from .session import Session
-from .http import request, get, post, download_file, headers
+from .http import request, get, post, websocket, \
+     download_file, default_headers, put, patch, delete
 
-__version__ = '1.0.0'
+__version__ = '2.2.0'  # 2.2.0 14/12/2024
 
-__all__ = ['__version__', 'DEFAULT_AGENT', 'COMMON_AGENTS', 'random_agent',
-           'Session', 'request', 'get', 'post', 'download_file', 'headers']
+__all__ = [
+    '__version__',
+    'DEFAULT_AGENT',
+    'COMMON_AGENTS',
+    'random_agent',
+    'Session',
+    'request',
+    'get',
+    'post',
+    'websocket',
+    'download_file',
+    'default_headers',
+    'put',
+    'patch',
+    'delete'
+]

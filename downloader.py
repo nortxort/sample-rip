@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2020 Nortxort
+Copyright (c) 2024 Nortxort
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -27,7 +27,6 @@ DEALINGS IN THE SOFTWARE.
 import logging
 import asyncio
 
-from utilities import chunk_list
 from web import download_file
 
 log = logging.getLogger(__name__)
@@ -37,46 +36,57 @@ class Downloader:
     """
     Class to download files.
     """
-    def __init__(self, path, tasks_amount: int = 10, wait_time: int = 5):
+    def __init__(self, path, sample_packs: list, queue_size: int = 10):
         """
         Initialize the Downloader class.
 
         :param path: The path to the download directory.
-        :param tasks_amount: The amount of tasks to run concurrently.
-        :param wait_time: The wait time in seconds between concurrent tasks.
+        :param sample_packs: A list of SamplePack objects.
         """
         self._path = path
-        self._tasks = tasks_amount
-        self._wait = wait_time
+        self._sample_packs = sample_packs
+        self._main_queue = asyncio.Queue(maxsize=queue_size)
+        self._downloaded_files = []
 
-    async def download(self, sample_packs: list) -> list:
-        """
-        Download SamplePacks concurrently.
+    async def start(self, workers: int):
+        # prepare workers to work on the queue
+        consumers = [asyncio.create_task(self._queue_worker())
+                     for _ in range(workers)]
 
-        :param sample_packs: A list of SamplePack objects.
-        :return: A list of strings containing the destination of files downloaded.
-        """
-        results = []
+        # start adding urls to the queue
+        await self._create_download_queue()
 
-        log.debug('creating download tasks')
+        log.debug('calling queue.join()')
+        # wait for all workers to be done
+        await self._main_queue.join()
 
-        sample_pack_chunks = chunk_list(sample_packs, self._tasks)
-        for pack_chunk in sample_pack_chunks:
+        log.debug('cancelling consumers')
+        # cancel workers. they will still be in
+        # a loop state, waiting for queue items
+        for consumer in consumers:
+            consumer.cancel()
 
-            tasks = []
+        # return a list of downloaded file locations
+        return self._downloaded_files
 
-            for chunk in pack_chunk:
-                destination = self._path.joinpath(chunk.file_name)
-                task = asyncio.create_task(self._download(chunk.url, destination))
-                tasks.append(task)
+    async def _create_download_queue(self):
+        for pack in self._sample_packs:
+            log.debug(f'adding {pack.url} to download queue')
+            await self._main_queue.put(pack)
 
-            results = await asyncio.gather(*tasks)
+    async def _queue_worker(self):
 
-            await asyncio.sleep(self._wait)
-
-        return results
+        while True:
+            pack = await self._main_queue.get()
+            log.debug(f'handling: {pack}')
+            destination = self._path.joinpath(pack.file_name)
+            downloaded_file = await self._download(pack.url, destination)
+            self._downloaded_files.append(downloaded_file)
+            self._main_queue.task_done()
 
     @staticmethod
     async def _download(url: str, destination: str):
         # download file from url to the destination.
-        return await download_file(url=url, destination=destination, rua=True, chunk_size=1024*4)
+        return await download_file(url=url,
+                                   destination=destination,
+                                   rua=True)

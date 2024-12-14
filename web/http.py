@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2020 Nortxort
+Copyright (c) 2024 Nortxort
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,40 +25,43 @@ DEALINGS IN THE SOFTWARE.
 """
 
 import logging
+from collections import OrderedDict
 
 import aiohttp
-import aiofiles
 
 from . import agent
 from .session import Session
+
+try:
+    import aiofile
+except ImportError:
+    aiofile = None
 
 
 log = logging.getLogger(__name__)
 
 
-def headers(header: dict = None, rua: bool = False) -> dict:
+def default_headers(headers: dict = None, rua: bool = False) -> dict:
     """
     Construct a basic header.
 
-    :param header: A user provided header.
+    :param headers: A user provided header.
     :param rua: Use a random user agent string.
     :return: A header dictionary.
     """
-    if isinstance(header, dict):
-        if header.get('User-Agent') is not None and rua:
-            header['User-Agent'] = agent.random_agent()
+    if isinstance(headers, (dict, OrderedDict)):
+        return headers
 
-        return header
-    else:
-        ua = agent.DEFAULT_AGENT
-        if rua:
-            ua = agent.random_agent()
+    bh = {
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate',
+        'User-Agent': agent.DEFAULT_AGENT
+    }
 
-        h = {
-            'User-Agent': ua
-        }
+    if rua:
+        bh['User-Agent'] = agent.random_agent()
 
-        return h
+    return bh
 
 
 async def request(method: str, url: str, **kwargs):
@@ -69,14 +72,16 @@ async def request(method: str, url: str, **kwargs):
     :param url: The url for the request.
     :param kwargs: Keywords, see
     https://github.com/aio-libs/aiohttp/blob/581e97654410aa4b372b93e69434f6de79feeef4/aiohttp/client.py#L953
-    :return: A aiohttp.ClientResponse object or None on error.
+    :return: aiohttp.ClientResponse or None on error.
     :rtype: aiohttp.ClientResponse | None
     """
     error = None
     response = None
 
     header = kwargs.get('headers')
-    kwargs['headers'] = headers(header, kwargs.pop('rua', False))
+    kwargs['headers'] = default_headers(header, kwargs.pop('rua', False))
+
+    log.debug('headers: ' + str(kwargs['headers']))
 
     if Session.session is None:
         session = Session.create()
@@ -86,7 +91,6 @@ async def request(method: str, url: str, **kwargs):
     log.debug(f'{method} {url} {kwargs}')
 
     try:
-
         if method == 'websocket':
             response = await session.ws_connect(url=url, **kwargs)
         else:
@@ -97,30 +101,31 @@ async def request(method: str, url: str, **kwargs):
 
     finally:
         if error is not None:
-            log.error(error)
+            log.error(error, exc_info=True)
 
         return response
 
 
-async def download_file(url: str, destination: str, chunk_size: int = 1024,
-                        mode: str = 'wb', **kwargs):
+async def download_file(url: str, destination: str, **kwargs):
     """
     Download file.
 
     :param url: The url of the file to download.
-    :param destination: The destination to where the file should be saved.
-    :param chunk_size: The size of the chunks to read/write.
-    :param mode: The file mode.
-    :param kwargs: Optional keyword to pass to request.
+    :param destination: The destination path and file name to save.
     :return: The destination of the downloaded file.
     :rtype: str | None
     """
+    if aiofile is None:
+        log.error('aiofile not installed - cannot download files!')
+        return None
+
     response = await request('GET', url=url, **kwargs)
     if response is not None:
+
         log.debug(f'downloading {url} to {destination}')
-        async with aiofiles.open(destination, mode=mode) as f:
-            async for data in response.content.iter_chunked(chunk_size):
-                await f.write(data)
+
+        async with aiofile.async_open(destination, 'wb') as f:
+            await f.write(await response.read())
 
         return destination
 
@@ -132,7 +137,7 @@ async def websocket(url: str, **kwargs):
     websocket request.
 
     :param url: The url of the resource.
-    :return: A aiohttp.ClientWebSocketResponse or None.
+    :return: An aiohttp.ClientWebSocketResponse or None.
     :rtype: aiohttp.ClientWebSocketResponse | None
     """
     return await request(method='websocket', url=url, **kwargs)
@@ -143,7 +148,7 @@ async def get(url: str, **kwargs):
     GET request.
 
     :param url: The url of the resource.
-    :return: A aiohttp.ClientResponse or None.
+    :return: An aiohttp.ClientResponse or None.
     :rtype: aiohttp.ClientResponse | None
     """
     return await request(method='GET', url=url, **kwargs)
@@ -154,7 +159,43 @@ async def post(url: str, **kwargs):
     POST request.
 
     :param url: The url of the resource.
-    :return: A aiohttp.ClientResponse or None.
+    :return: An aiohttp.ClientResponse or None.
     :rtype: aiohttp.ClientResponse | None
     """
     return await request(method='POST', url=url, **kwargs)
+
+
+async def delete(url: str, **kwargs):
+    """
+    DELETE request.
+    TODO: Test
+
+    :param url: The url of the resource.
+    :return: An aiohttp.ClientResponse or None.
+    :rtype: aiohttp.ClientResponse | None
+    """
+    return await request(method='DELETE', url=url, **kwargs)
+
+
+async def patch(url: str, **kwargs):
+    """
+    PATCH request.
+    TODO: Test
+
+    :param url: The url of the resource.
+    :return: An aiohttp.ClientResponse or None.
+    :rtype: aiohttp.ClientResponse | None
+    """
+    return await request(method='PATCH', url=url, **kwargs)
+
+
+async def put(url: str, **kwargs):
+    """
+    PUT request.
+    TODO: Test
+
+    :param url: The url of the resource.
+    :return: An aiohttp.ClientResponse or None.
+    :rtype: aiohttp.ClientResponse | None
+    """
+    return await request(method='PUT', url=url, **kwargs)

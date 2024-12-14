@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2020 Nortxort
+Copyright (c) 2024 Nortxort
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -33,32 +33,43 @@ from musicradar import MusicRadarParser
 from downloader import Downloader
 from web import Session
 
-# ------------- Configuration ----------------
-# You could change these settings to speed up the overall process.
-# But do bare in mind that setting SIMULTANEOUS_PARSER_TASKS
-# and SIMULTANEOUS_DOWNLOADER_TASKS to high could lead to errors.
+# version 2.0.0
 
-# The amount of simultaneous tasks for the parser.
-SIMULTANEOUS_PARSER_TASKS = 40
 
-# The wait time between parser tasks.
-PARSER_WAIT_TIME = 5
+# amounts of simultaneously parsers.
+PARSER_WORKERS = 3
 
-# The amount of simultaneous downloader tasks.
-SIMULTANEOUS_DOWNLOADER_TASKS = 20
+# max size of the parser queue.
+# https://docs.python.org/3/library/asyncio-queue.html#asyncio.Queue
+PARSER_QUEUE_MAX_SIZE = 0
 
-# The wait time between download tasks.
-DOWNLOADER_WAIT_TIME = 3
-# --------------------------------------------
+# amount of simultaneously downloads.
+DOWNLOAD_WORKERS = 20
+
+# max size of the download queue.
+DOWNLOAD_QUEUE_MAX_SIZE = 150
+
+# Debug
+DEBUG = True
 
 log = logging.getLogger(__name__)
 
 
-def logger_setup():
-    fmt = '%(asctime)s : %(levelname)s : %(filename)s : ' \
-          '%(lineno)d : %(funcName)s() : %(name)s : %(message)s'
+def set_logger():
 
-    logging.basicConfig(filename='debug.log', level=10, format=fmt)
+    fmt = ('%(asctime)s,%(msecs)03d:%(levelname)s:'
+           'L%(lineno)d:%(filename)s:'
+           '%(name)s.%(funcName)s(): %(message)s')
+
+    logging.basicConfig(
+        format=fmt,
+        datefmt='%d/%m/%Y %H:%M:%S',
+        level=logging.DEBUG
+    )
+
+
+if DEBUG:
+    set_logger()
 
 
 async def run(path: str):
@@ -85,17 +96,10 @@ async def run(path: str):
 
     print('Starting parser..')
 
-    parser = MusicRadarParser(tasks_amount=SIMULTANEOUS_PARSER_TASKS,
-                              wait_time=PARSER_WAIT_TIME)
-    await parser.gather_urls()
-    print(f'\n{len(parser.sample_pages)} urls parsed.')
+    parser = MusicRadarParser(PARSER_QUEUE_MAX_SIZE, 5)
+    sample_packs = await parser.start(workers=PARSER_WORKERS)
 
-    print(f'\nParsing sample pack urls...please wait.')
-    await parser.gather_sample_urls()
-    print(f'Found {len(parser.sample_packs)} sample packs on {len(parser.sample_pages)} pages.')
-
-    if parser.errors > 0:
-        print(f'{parser.errors} parser errors. Try adjusting the configuration.')
+    print(f'parsed {len(sample_packs)} sample packs urls')
 
     downloads = []
 
@@ -111,25 +115,22 @@ async def run(path: str):
     else:
         input(f'Press enter to start downloading {len(downloads)} sample packs.')
 
-        dl = Downloader(fh.path, tasks_amount=SIMULTANEOUS_DOWNLOADER_TASKS,
-                        wait_time=DOWNLOADER_WAIT_TIME)
+        dl = Downloader(fh.path, downloads, DOWNLOAD_QUEUE_MAX_SIZE)
         print(f'\nStarting downloader, this might take a while...')
 
         start = time.time()
 
-        results = await dl.download(downloads)
+        results = await dl.start(workers=DOWNLOAD_WORKERS)
         if len(results) == 0:
             print('Nothing was downloaded.')
         else:
-            for download in results:
-                print(f'Downloaded {download}')
+            for downloaded_file in results:
+                print(f'Downloaded: {downloaded_file}')
 
             t = time.strftime('%H:%M:%S', time.gmtime(time.time() - start))
             print(f'\nDownloaded {len(downloads)} sample packs in {t}.')
 
-    log.debug('cleaning up')
     await Session.close()
-    await asyncio.sleep(2)
 
 
 def main():
@@ -139,5 +140,4 @@ def main():
 
 
 if __name__ == '__main__':
-    logger_setup()
     main()
