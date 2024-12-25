@@ -33,50 +33,56 @@ class SamplePack:
         self._page_url = page_url
         self._url = url
         self._title = title
+        self._size: int = 0
+        self._file_path: str = ''
+        self._content_length: int = 0
 
     @property
     def page_url(self) -> str:
-        """
-        The page the sample pack url was located on.
-        """
+        """ page the sample pack url was located on. """
         return self._page_url
 
     @property
     def url(self) -> str:
-        """
-        The url of the sample pack(zip file).
-        """
+        """ url to the sample pack(zip file). """
         return self._url
 
     @property
     def title(self) -> str:
-        """
-        The title of the sample pack.
-        """
+        """ title of the sample pack. """
         return self._title
 
     @property
     def file_name(self) -> str:
-        """
-        The name of the sample pack(zip file name)
-        """
+        """ name of the sample pack(zip file name) """
         return self._url.split('/')[-1]
 
     @property
-    def size(self) -> str:
-        """
-        The (titled)size of the sample pack in MB.
+    def size(self) -> int:
+        """ size of the sample pack in bytes. """
+        return self._size
 
-        Some packs do not have an MB size that can
-        be parsed, in that case N/A will be returned.
-        """
-        if '\'' in self._title:
-            self._title = self._title.replace('\'', '')
+    @property
+    def path(self) -> str:
+        """ location the file was saved to. """
+        return self._file_path
 
-        if 'MB)' in self._title:
-            return self._title.split('(')[1].split(')')[0]
+    @property
+    def content_length(self):
+        """ content length of file. """
+        return self._content_length
 
-        return 'N/A'
+    @size.setter
+    def size(self, value):
+        self._size = value
+
+    @path.setter
+    def path(self, value):
+        self._file_path = value
+
+    @content_length.setter
+    def content_length(self, value):
+        self._content_length = value
 
     def __repr__(self):
         return (f'<{__class__.__name__} '
@@ -84,4 +90,6 @@ class SamplePack:
                 f'url={self.url}, '
                 f'title={self.title}, '
                 f'file_name={self.file_name}, '
-                f'size={self.size}>')
+                f'size={self.size}, '
+                f'path={self.path}, '
+                f'content_length={self.content_length}>')
