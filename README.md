@@ -17,7 +17,7 @@ Before running the program, create a folder on your hard drive, e.g `musicradar`
 
 You may want to experiment with the configuration settings found in [main.py](https://github.com/nortxort/sample-rip/blob/master/main.py#L38) to speed up the overall process. I sudgest using the default settings first. 
 
-As default, only 5 sample packs will be processed. To processed all sample packs set **MAX\_SAMPLE\_PACKS** to 0.
+As default, only 5 sample pages will be processed. To processed all sample pages set **MAX\_SAMPLE\_PAGES\_URLS** to 0.
 
 
 ### Requirements
@@ -27,11 +27,11 @@ As default, only 5 sample packs will be processed. To processed all sample packs
 
 ## Usage
 
-Run `path/to/main.py`. When asked to enter path, enter the path to the folder you created. This will start the parsing process, once that is done you will be promted with some status information.
+Run `path/to/main.py`. When asked to enter path, enter the full path to the folder you created. e.g `C:\MySamples\musicradar` This will start the parsing process, once that is done you will be promted with some status information.
 
 When running main later on and pointing to the folder that contains samples, only samples not already downloaded will be downloaded. 
 
-**NOTE:** This is only possible, if the sample packs are not renamed after downloading/unpacking them.
+**NOTE:** This is only possible, if the sample packs are not renamed/moved after downloading/unpacking them.
 
 Assuming a folder named `musicradar` was created, then the folder structure should look something like:
 
