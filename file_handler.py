@@ -90,6 +90,9 @@ class FileHandler:
         """
         if self._path.is_dir():
             for d in self._path.iterdir():
+                if d.is_file() and d.name.endswith('.zip'):
+                    # *.zip files in this folder is sample packs
+                    self._old_samples.append(d.name)
                 if d.is_dir():
                     self._old_samples.append(d.name)
 
@@ -99,9 +102,9 @@ class FileHandler:
         """
         Compare two lists.
 
-        :param new_samples: A list of SamplePack objects.
-        :param old_samples: A list of sample pack names.
-        :return: A tuple of list(a) not in old samples and list(b) in old samples.
+        :param new_samples: list of SamplePack objects.
+        :param old_samples: list of sample pack names.
+        :return: tuple of list(a) not in old samples and list(b) in old samples.
         """
         to_download = []
         ignored = []

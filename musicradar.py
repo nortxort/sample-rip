@@ -38,18 +38,18 @@ class MusicRadarParser:
     """
     MusicRadar sample pack parser.
     """
-    _main_url = ('https://www.musicradar.com/news/tech/'
-                 'free-music-samples-royalty-free-loops-hits-and-multis-to-download-sampleradar')
+    _INDEX_URL = ('https://www.musicradar.com/news/tech/'
+                  'free-music-samples-royalty-free-loops-hits-and-multis-to-download-sampleradar')
 
-    def __init__(self, queue_size: int = 0, packs_amount: int = 0):
+    def __init__(self, queue_size: int = 0, pages_num: int = 0):
         """
         Initialize the MusicRadar parser.
 
         :param queue_size: Sets the maxsize of the queue
+        :param pages_num: Number of sample page urls. 0 for all.
         """
         self._main_queue = asyncio.Queue(maxsize=queue_size)
-        self._packs_amount = packs_amount
-        self._fail_queue = asyncio.Queue()
+        self._pages_num = pages_num
         self._sample_packs = []
 
     @property
@@ -61,31 +61,32 @@ class MusicRadarParser:
         """
         Start the MusicRadar parser.
 
-        This will get all the sample pack urls from
-        the page(_main_url) containing links to sample
-        packs (zip files)
+        Get the main index page and parse sample page urls.
+        Parse sample pack urls(to the zip files)
+        from the sample page urls
 
         NOTE: The amount of workers should not be too high.
         since this could cause the server to not respond,
-        resulting in timeouts
+        resulting in hanging.
 
         :param workers: The amount of queue workers
         :return: A list of SamplePack objects
         """
         # prepare workers to work on the queue
-        consumers = [asyncio.create_task(self._queue_worker(i))
-                     for i in range(workers)]
+        work_force = [asyncio.create_task(self._queue_worker(i))
+                      for i in range(workers)]
 
         # start producing sample page urls
         await self._parse_sample_page_urls()
 
+        log.debug('calling queue.join()')
         # wait for all workers to be done
         await self._main_queue.join()
 
-        # cancel workers. they will still be in
-        # a loop state, waiting for queue items
-        for consumer in consumers:
-            consumer.cancel()
+        log.debug('cancelling workers')
+        # cancel workers.
+        for worker in work_force:
+            worker.cancel()
 
         # return a list of SamplePack objects
         return self._sample_packs
@@ -94,7 +95,7 @@ class MusicRadarParser:
 
         log.info('starting url parsing')
 
-        response = await get(self._main_url)
+        response = await get(self._INDEX_URL)
         if response is not None:
 
             soup = BeautifulSoup(await response.text(), 'html.parser')
@@ -106,14 +107,14 @@ class MusicRadarParser:
                 i = 0
                 for p in p_tags[9:-1]:
 
-                    if self._packs_amount > 0:
-                        if i == self._packs_amount:
+                    if self._pages_num > 0:
+                        if i == self._pages_num:
                             break
 
                     p_a_tag = p.a
                     if hasattr(p_a_tag, 'text'):
                         url = p_a_tag['href']
-                        log.debug(f'parsed url: {url}')
+                        log.debug(f'parsed sample page url: {url}')
                         if url.startswith('https://www.musicradar.com/'):
                             await self._main_queue.put(url)
                             i += 1
@@ -128,10 +129,7 @@ class MusicRadarParser:
             if response is not None:
                 await self._parse_sample_pack_url(url, await response.text())
                 self._main_queue.task_done()
-            else:
-                # TODO: implement something for the fail_queue
-                await self._fail_queue.put(url)
-                self._main_queue.task_done()
+            # implement fail queue?
 
     async def _parse_sample_pack_url(self, url, response):
 
@@ -152,5 +150,5 @@ class MusicRadarParser:
 
                         log.debug(f'sample pack url: {pack_url}, title: {pack_title}')
 
-                        sample = SamplePack(url, pack_url, pack_title)
-                        self._sample_packs.append(sample)
+                        sp = SamplePack(url, pack_url, pack_title)
+                        self._sample_packs.append(sp)

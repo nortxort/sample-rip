@@ -33,27 +33,26 @@ from musicradar import MusicRadarParser
 from downloader import Downloader
 from web import Session
 
-# version 2.0.0
 
-# the max amount of sample packs to process.
-# setting this to 0 will download all packs.
-MAX_SAMPLE_PACKS = 5
+DEBUG = True
 
-# amounts of simultaneously parsers.
+# the max amount of sample page urls to process.
+# set to 0 to process all sample page urls.
+MAX_SAMPLE_PAGE_URLS = 5
+
+# amounts of simultaneously parser connections.
 PARSER_WORKERS = 3
 
 # max size of the parser queue.
 # https://docs.python.org/3/library/asyncio-queue.html#asyncio.Queue
 PARSER_QUEUE_MAX_SIZE = 0
 
-# amount of simultaneously downloads.
-DOWNLOAD_WORKERS = 20
+# amount of simultaneously download connections.
+DOWNLOAD_WORKERS = 5
 
 # max size of the download queue.
 DOWNLOAD_QUEUE_MAX_SIZE = 150
 
-# Debug
-DEBUG = True
 
 log = logging.getLogger(__name__)
 
@@ -95,11 +94,15 @@ async def run(path: str):
 
     if not fh.was_dir_created:
         old_samples = fh.iter_root_dir()
+
         print(f'Found {len(old_samples)} sample packs at {fh.path}')
+
+        for old in old_samples:
+            print(f'pack on system: {old}')
 
     print('Starting parser..')
 
-    parser = MusicRadarParser(PARSER_QUEUE_MAX_SIZE, MAX_SAMPLE_PACKS)
+    parser = MusicRadarParser(PARSER_QUEUE_MAX_SIZE, MAX_SAMPLE_PAGE_URLS)
     sample_packs = await parser.start(workers=PARSER_WORKERS)
 
     print(f'parsed {len(sample_packs)} sample packs urls')
@@ -119,7 +122,7 @@ async def run(path: str):
         input(f'Press enter to start downloading {len(downloads)} sample packs.')
 
         dl = Downloader(fh.path, downloads, DOWNLOAD_QUEUE_MAX_SIZE)
-        print(f'\nStarting downloader, this might take a while...')
+        print(f'\nStarting downloader, this will take a while...')
 
         start = time.time()
 
@@ -127,8 +130,9 @@ async def run(path: str):
         if len(results) == 0:
             print('Nothing was downloaded.')
         else:
-            for downloaded_file in results:
-                print(f'Downloaded: {downloaded_file}')
+            print('\n---Downloaded packs---')
+            for sp in results:
+                print(f'{sp.file_name}, ({sp.size}) -> {sp.path}')
 
             t = time.strftime('%H:%M:%S', time.gmtime(time.time() - start))
             print(f'\nDownloaded {len(downloads)} sample packs in {t}.')
@@ -137,7 +141,7 @@ async def run(path: str):
 
 
 def main():
-    path = input('\nEnter root path [default=\'./samples\']: ') or './samples'
+    path = input('\nEnter root path [default = ./samples]: ') or './samples'
 
     asyncio.run(run(path))
 
