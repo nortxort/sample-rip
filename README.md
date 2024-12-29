@@ -17,7 +17,7 @@ Before running the program, create a folder on your hard drive, e.g `musicradar`
 
 You may want to experiment with the configuration settings found in [main.py](https://github.com/nortxort/sample-rip/blob/master/main.py#L38) to speed up the overall process. I sudgest using the default settings first. 
 
-As default, only 5 sample pages will be processed. To processed all sample pages set **MAX\_SAMPLE\_PAGES\_URLS** to 0.
+As default, only 5 sample pages will be processed. To process all sample pages set **MAX\_SAMPLE\_PAGES\_URLS** to 0.
 
 
 ### Requirements
@@ -42,11 +42,11 @@ Assuming a folder named `musicradar` was created, then the folder structure shou
         musicradar-808-samples.zip
         ....
 
-After downloading the sample packs you will have to unpack them yourself, as they are all downlaoded as *.zip files.
+
 
 ## Todo
 
-* Implement database storage.
+
 
 * Programmatically unpack zip files and delete the zip file.
 
